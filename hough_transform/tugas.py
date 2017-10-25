@@ -2,6 +2,7 @@ from PIL import Image
 import array
 import math
 import copy
+import numpy as np
 #BEGIN HISTOGRAM CLUSTER
 def HistogramCluster(inputImage,numCluster):
   colors = [0,255,128]
@@ -183,4 +184,58 @@ def CombineDensity(im1,im2):
 
 
 #BEGIN Circular Hough Transform
+def CircularHoughTransform(inputImage,minRad=50,maxRad=300):
+  width,height = inputImage.size
+  imList = list(inputImage.tobytes())
+  imListNew = []
+  temp = []
+  j = 0
 
+  for i in imList:
+    if i>100 :
+      i=1
+    else :
+      i=0  
+  
+  for i in range(len(imList)):
+    j = (j+1)%width
+    temp.append(imList[i])
+    if(j==0):
+      imListNew.append(temp)
+      temp=[]
+      j=0
+  imList = imListNew[:]
+  voteCount = np.zeros((height,width,maxRad))
+  bestA,bestB,bestR,bestVote = -1,-1,-1,-1
+  for r in range(minRad,maxRad,2):
+    rr = r*r
+    for a in range(height):
+      for b in range(width):
+        if imList[a][b]:
+          for y in range(max(0,a-r),min(height,a+r+1)):
+            if rr<(y-a)*(y-a) :
+              continue
+            x1a = math.ceil(b + math.sqrt(rr - (y-a)*(y-a)))
+            x1b = math.floor(b + math.sqrt(rr - (y-a)*(y-a)))
+
+            x2a = math.ceil(b - math.sqrt(rr - (y-a)*(y-a)))
+            x2b = math.floor(b - math.sqrt(rr - (y-a)*(y-a)))
+            if (x1a<width and x1a>=0 and imList[y][x1a]) :
+              voteCount[y][x1a][r]+=1
+              if voteCount[y][x1a][r]>bestVote:
+                bestA,bestB,bestR,bestVote = y,x1a,r,voteCount[y][x1a][r]
+            if (x1b<width and x1b>=0 and imList[y][x1b]) :
+              voteCount[y][x1b][r]+=1
+              if voteCount[y][x1b][r]>bestVote:
+                bestA,bestB,bestR,bestVote = y,x1b,r,voteCount[y][x1b][r]
+            if (x2a<width and x2a>=0 and imList[y][x2a]) :
+              voteCount[y][x2a][r]+=1
+              if voteCount[y][x2a][r]>bestVote:
+                bestA,bestB,bestR,bestVote = y,x2a,r,voteCount[y][x2a][r]
+            if (x2b<width and x2b>=0 and imList[y][x2b]) :
+              voteCount[a][x2b][r]+=1
+              if voteCount[y][x2b][r]>bestVote:
+                bestA,bestB,bestR,bestVote = y,x2b,r,voteCount[y][x2b][r]
+  ret = [min(0,bestA-r),min(0,bestB-r),max(height,bestA+r),max(width,bestB+r)]  
+  return ret
+  return 0
